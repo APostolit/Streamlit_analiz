@@ -1,0 +1,113 @@
+import streamlit as st
+import yfinance as yf
+import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+# Функция загрузки данных с кэшированием
+@st.cache_data
+def get_data():
+    try:
+        # Тикер компании
+        tick = yf.Ticker("AMD")
+        # Получение набора данных от Yahoo Finance
+        data_1 = tick.history(start="2020-01-01")
+        # Дополнение пропущенных дат
+        df_1 = data_1["Close"].resample("1D").mean().ffill()
+        return data_1, df_1
+    except Exception as e:
+        st.error(f'Ошибка загрузки данных: {e}', icon="🚨")
+
+st.markdown('#### 🏂 Модель скользящего среднего (MA) для анализа временных рядов')
+st.markdown('##### 💹 Данные Yahoo Finance о котировках акций')
+
+# Использовать круговой спиннер
+with st.spinner(text="📥Ждите, идет загрузка данных...", show_time=True):
+    data, df = get_data()
+
+# Создаем вкладки
+tab1, tab2, tab3  = st.tabs(["📶Анализ набора данных",
+                             "🏂Скользящее среднее 10 дней",
+                             "🏂Скользящее среднее 50 дней"])
+# Вкладка tab1
+with tab1:
+    # Создаем вкладки
+    t11, t12 = st.tabs(
+        ["📶Набор данных",
+         "📈График"
+         ])
+    with t11:
+        # Контейнер для данных data
+        with st.container(width=800):
+            st.write('📶Полный набор данных DataFrame из API Yahoo Finance')
+            st.write(data)
+    with t12:
+        # Контейнер для графика
+        with st.container(width=800, border=True):
+            # Графики анализа автокорреляции с matplotlib
+            st.write('📈Графики анализа автокорреляции с matplotlib')
+            fig, ax = plt.subplots(2, 1, figsize=(10, 6))
+            plot_acf(df, lags=130, ax=ax[0])
+            plot_pacf(df, lags=130, ax=ax[1])
+            plt.tight_layout()
+            st.pyplot(fig, width=800)
+
+# Оставляем одну колонку
+df = data[['Close']]
+q = 10
+# Расчет скользящего среднего за 10 дней
+df['MA'] = df['Close'].rolling(window=q).mean()
+
+# Вкладка tab2
+with tab2:
+    # Создаем вкладки
+    t21, t22 = st.tabs(
+        ["📶Набор данных",
+         "📈График"
+         ])
+    with t21:
+        # Контейнер для данных df
+        with st.container(width=400):
+            st.write('📶🏂Стоимость акций при закрытии торгов - Close и скользящее среднее - MA за 10 дней ')
+            st.write(df)
+    with t22:
+        # Контейнер для графика
+        with st.container(width=800, border=True):
+            # Формируем график котировок акций
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df.index, y=df['Close'], name="Акции AMD"))
+            fig.add_trace(go.Scatter(x=df.index, y=df['MA'], name="Среднее MA"))
+            # Обновить подписи осей
+            fig.update_layout(xaxis_title="Дата",
+                              yaxis_title="Стоимость акций, $",
+                              title='📈💹Котировки акций от Yahoo Finance (скользящее среднее за 10 дней)')
+            st.plotly_chart(fig, theme=None)
+
+q = 50
+# Расчет скользящего среднего за 50 дней
+df['MA'] = df['Close'].rolling(window=q).mean()
+
+# Вкладка tab3
+with tab3:
+    # Создаем вкладки
+    t31, t32 = st.tabs(
+        ["📶Набор данных",
+         "📈График"
+         ])
+    with t31:
+        # Контейнер для данных df
+        with st.container(width=400):
+            st.write('📶🏂Стоимость акций при закрытии торгов - Close и скользящее среднее - MA за 50 дней')
+            st.write(df)
+    with t32:
+        # Контейнер для графика
+        with st.container(width=800, border=True):
+            # Формируем график котировок акций
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df.index, y=df['Close'], name="Акции AMD"))
+            fig.add_trace(go.Scatter(x=df.index, y=df['MA'], name="Среднее MA"))
+            # Обновить подписи осей
+            fig.update_layout(xaxis_title="Дата",
+                              yaxis_title="Стоимость акций, $",
+                              title='📈💹Котировки акций от Yahoo Finance (скользящее среднее за 50 дней)')
+            st.plotly_chart(fig, theme=None)
